@@ -33,6 +33,10 @@
 #include <string.h>
 #include <time.h>
 
+/* PATCH START */
+#include <emscripten.h>
+/* PATCH END */
+
 #if HAVE_IO_H
 #include <io.h>
 #endif
@@ -535,6 +539,14 @@ void update_benchmark(const char *fmt, ...)
     }
 }
 
+/* PATCH START */
+EM_JS(void, send_progress, (double progress, double time), {
+
+    Module.receiveProgress(progress, time);
+
+});
+/* PATCH END */
+
 static void print_report(int is_last_report, int64_t timer_start, int64_t cur_time, int64_t pts)
 {
     AVBPrint buf, buf_script;
@@ -598,6 +610,25 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
         }
     }
 
+    /* PATCH START */
+    /* send_progress here only works when the duration of
+     * input and output file are the same, other cases (ex. trim)
+     * still WIP.
+     *
+     * TODO: support cases like trim.
+     */
+    int64_t duration = -1;
+    int64_t pts_abs = FFABS(pts);
+    /* Use the longest duration among all input files. */
+    for (int i = 0; i < nb_input_files; i++) {
+      int64_t file_duration = input_files[i]->ctx->duration;
+      if (file_duration > duration) {
+        duration = file_duration;
+      }
+    }
+    send_progress((double)pts_abs / (double)duration, (double)pts_abs);
+    /* PATCH END */
+
     if (copy_ts) {
         if (copy_ts_first_pts == AV_NOPTS_VALUE && pts > 1)
             copy_ts_first_pts = pts;
@@ -658,7 +689,11 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
     }
 
     if (print_stats || is_last_report) {
-        const char end = is_last_report ? '\n' : '\r';
+        /* PATCH START */
+        /* Always print a new line of message. */
+        const char end = '\n';
+        // const char end = is_last_report ? '\n' : '\r';
+        /* PATCH END */
         if (print_stats==1 && AV_LOG_INFO > av_log_get_level()) {
             fprintf(stderr, "%s    %c", buf.str, end);
         } else
@@ -683,6 +718,14 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
     }
 
     first_report = 0;
+
+    /* PATCH START */
+    if (is_last_report) {
+      // Make sure the progress is ended with 1.
+      if (pts_abs != duration) send_progress(1, (double)pts_abs);
+      print_final_stats(total_size);
+    }
+    /* PATCH END */
 }
 
 static void print_stream_maps(void)
@@ -832,6 +875,19 @@ static int check_keyboard_interaction(int64_t cur_time)
     return 0;
 }
 
+/* PATCH START */
+/* is_timeout checks if transcode() is running longer
+ * than a timeout value, return 1 when timeout.
+ */
+EM_JS(int, is_timeout, (int64_t diff), {
+if (Module.timeout === -1) {
+    return 0;
+} else {
+  return Module.timeout <= diff;
+}
+});
+/* PATCH END */
+
 /*
  * The following code is the main loop of the file converter
  */
@@ -856,6 +912,12 @@ static int transcode(Scheduler *sch)
 
     while (!sch_wait(sch, stats_period, &transcode_ts)) {
         int64_t cur_time= av_gettime_relative();
+
+        /* PATCH START */
+        if (is_timeout((cur_time - timer_start) / 1000) == 1) {
+            term_exit();
+        }
+        /* PATCH END */
 
         /* if 'q' pressed, exits */
         if (stdin_interaction)
@@ -926,8 +988,58 @@ static int64_t getmaxrss(void)
 #endif
 }
 
-int main(int argc, char **argv)
-{
+/* PATCH START */
+/* init_globals initializes global variables to enable multiple
+ * calls of ffmpeg().
+ *
+ * This is not required in the original command line version as
+ * the global variables are always re-initialized when calling
+ * main() function.
+ */
+void init_globals() {
+  nb_frames_dup = 0;
+  dup_warning = 1000;
+  nb_frames_drop = 0;
+  nb_output_dumped = 0;
+  want_sdp = 1;
+
+  progress_avio = NULL;
+
+  input_streams = NULL;
+  nb_input_streams = 0;
+  input_files = NULL;
+  nb_input_files = 0;
+
+  output_streams = NULL;
+  nb_output_streams = 0;
+  output_files = NULL;
+  nb_output_files = 0;
+
+  filtergraphs = NULL;
+  nb_filtergraphs = 0;
+
+  received_sigterm = 0;
+  received_nb_signals = 0;
+  transcode_init_done = ATOMIC_VAR_INIT(0);
+  ffmpeg_exited = 0;
+  main_return_code = 0;
+  copy_ts_first_pts = AV_NOPTS_VALUE;
+}
+/* PATCH END */
+
+/* PATCH START */
+/* ffmpeg() is simply a rename of main(), but it makes things easier to
+ * control as main() is a special function name that might trigger
+ * some hidden mechanisms.
+ *
+ * One example is that when using multi-threading, a proxy_main() function
+ * might be used instead of main().
+ */
+int ffmpeg(int argc, char **argv)
+// int main(int argc, char **argv)
+    init_globals();
+/* PATCH END */
+
     Scheduler *sch = NULL;
 
     int ret;
