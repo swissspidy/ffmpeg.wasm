@@ -149,7 +149,10 @@ void show_help_children(const AVClass *class, int flags)
         printf("\n");
     }
 
-    while (child = av_opt_child_class_iterate(class, &iter))
+    /* PATCH START */
+//    while (child = av_opt_child_class_iterate(class, &iter))
+    while ((child = av_opt_child_class_iterate(class, &iter)))
+    /* PATCH END */
         show_help_children(child, flags);
 }
 
@@ -1017,7 +1020,10 @@ int filter_codec_opts(const AVDictionary *opts, enum AVCodecID codec_id,
         break;
     }
 
-    while (t = av_dict_iterate(opts, t)) {
+    /* PATCH START */
+//    while (t = av_dict_iterate(opts, t)) {
+    while ((t = av_dict_iterate(opts, t))) {
+    /* PATCH END */
         const AVClass *priv_class;
         char *p = strchr(t->key, ':');
 
