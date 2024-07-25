@@ -947,15 +947,18 @@ static int transcode(Scheduler *sch)
 static BenchmarkTimeStamps get_benchmark_time_stamps(void)
 {
     BenchmarkTimeStamps time_stamps = { av_gettime_relative() };
-#if HAVE_GETRUSAGE
-    struct rusage rusage;
-
-    getrusage(RUSAGE_SELF, &rusage);
-    time_stamps.user_usec =
-        (rusage.ru_utime.tv_sec * 1000000LL) + rusage.ru_utime.tv_usec;
-    time_stamps.sys_usec =
-        (rusage.ru_stime.tv_sec * 1000000LL) + rusage.ru_stime.tv_usec;
-#elif HAVE_GETPROCESSTIMES
+/* PATCH START */
+//#if HAVE_GETRUSAGE
+//    struct rusage rusage;
+//
+//    getrusage(RUSAGE_SELF, &rusage);
+//    time_stamps.user_usec =
+//        (rusage.ru_utime.tv_sec * 1000000LL) + rusage.ru_utime.tv_usec;
+//    time_stamps.sys_usec =
+//        (rusage.ru_stime.tv_sec * 1000000LL) + rusage.ru_stime.tv_usec;
+//#elif HAVE_GETPROCESSTIMES
+#if HAVE_GETPROCESSTIMES
+/* PATCH END */
     HANDLE proc;
     FILETIME c, e, k, u;
     proc = GetCurrentProcess();
@@ -972,11 +975,14 @@ static BenchmarkTimeStamps get_benchmark_time_stamps(void)
 
 static int64_t getmaxrss(void)
 {
-#if HAVE_GETRUSAGE && HAVE_STRUCT_RUSAGE_RU_MAXRSS
-    struct rusage rusage;
-    getrusage(RUSAGE_SELF, &rusage);
-    return (int64_t)rusage.ru_maxrss * 1024;
-#elif HAVE_GETPROCESSMEMORYINFO
+/* PATCH START */
+//#if HAVE_GETRUSAGE && HAVE_STRUCT_RUSAGE_RU_MAXRSS
+//    struct rusage rusage;
+//    getrusage(RUSAGE_SELF, &rusage);
+//    return (int64_t)rusage.ru_maxrss * 1024;
+//#elif HAVE_GETPROCESSMEMORYINFO
+#if HAVE_GETPROCESSMEMORYINFO
+/* PATCH END */
     HANDLE proc;
     PROCESS_MEMORY_COUNTERS memcounters;
     proc = GetCurrentProcess();
