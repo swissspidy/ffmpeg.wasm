@@ -720,11 +720,11 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
     first_report = 0;
 
     /* PATCH START */
-    if (is_last_report) {
-      // Make sure the progress is ended with 1.
-      if (pts_abs != duration) send_progress(1, (double)pts_abs);
-      print_final_stats(total_size);
-    }
+//    if (is_last_report) {
+//      // Make sure the progress is ended with 1.
+//      if (pts_abs != duration) send_progress(1, (double)pts_abs);
+//      print_final_stats(total_size);
+//    }
     /* PATCH END */
 }
 
@@ -997,21 +997,13 @@ static int64_t getmaxrss(void)
  * main() function.
  */
 void init_globals() {
-  nb_frames_dup = 0;
-  dup_warning = 1000;
-  nb_frames_drop = 0;
   nb_output_dumped = 0;
-  want_sdp = 1;
 
   progress_avio = NULL;
 
-  input_streams = NULL;
-  nb_input_streams = 0;
   input_files = NULL;
   nb_input_files = 0;
 
-  output_streams = NULL;
-  nb_output_streams = 0;
   output_files = NULL;
   nb_output_files = 0;
 
@@ -1022,7 +1014,6 @@ void init_globals() {
   received_nb_signals = 0;
   transcode_init_done = ATOMIC_VAR_INIT(0);
   ffmpeg_exited = 0;
-  main_return_code = 0;
   copy_ts_first_pts = AV_NOPTS_VALUE;
 }
 /* PATCH END */
@@ -1037,6 +1028,7 @@ void init_globals() {
  */
 int ffmpeg(int argc, char **argv)
 // int main(int argc, char **argv)
+{
     init_globals();
 /* PATCH END */
 
