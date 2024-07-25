@@ -964,7 +964,10 @@ int show_colors(void *optctx, const char *opt, const char *arg)
 
     printf("%-32s #RRGGBB\n", "name");
 
-    for (i = 0; name = av_get_known_color_name(i, &rgb); i++)
+/* PATCH START */
+//    for (i = 0; name = av_get_known_color_name(i, &rgb); i++)
+    for (i = 0; (name = av_get_known_color_name(i, &rgb)); i++)
+/* PATCH END */
         printf("%-32s #%02x%02x%02x\n", name, rgb[0], rgb[1], rgb[2]);
 
     return 0;
@@ -1026,7 +1029,10 @@ int show_layouts(void *optctx, const char *opt, const char *arg)
     }
     printf("\nStandard channel layouts:\n"
            "NAME           DECOMPOSITION\n");
-    while (ch_layout = av_channel_layout_standard(&iter)) {
+   /* PATCH START */
+//    while (ch_layout = av_channel_layout_standard(&iter)) {
+    while ((ch_layout = av_channel_layout_standard(&iter))) {
+   /* PATCH END */
             av_channel_layout_describe(ch_layout, buf, sizeof(buf));
             printf("%-14s ", buf);
             for (i = 0; i < 63; i++) {
